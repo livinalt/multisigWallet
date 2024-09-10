@@ -6,6 +6,7 @@ contract Multisig {
     uint8 public quorum;
     uint8 public noOfValidSigners;
     uint256 public txCount;
+    address[] public validSigners;
 
     struct Transaction {
         uint256 id;
@@ -26,6 +27,7 @@ contract Multisig {
 
     constructor(uint8 _quorum, address[] memory _validSigners) {
         quorum = _quorum;
+        validSigners = _validSigners;
 
         for(uint256 i = 0; i < _validSigners.length; i++) {
             require(_validSigners[i] != address(0), "zero address not allowed");
@@ -101,5 +103,19 @@ contract Multisig {
 
     function updateQuorum(uint8 _newQuorum) external {
 
+    }
+
+    // // added valid signers function
+    // function getValidSigners() external view returns(address[] memory){    
+    //     return validSigners;
+    // }
+    
+    // added valid signers function
+    function getValidSigners(uint8 id) external view returns(address[] memory){   
+
+       require(id != 0, "invalid transaction Id"); 
+
+       return transactions[id].transactionSigners;       
+        
     }
 }
