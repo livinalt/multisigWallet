@@ -26,12 +26,14 @@ contract Multisig {
     mapping(address => mapping(uint256 => bool)) hasSigned;
 
     constructor(uint8 _quorum, address[] memory _validSigners) {
-        quorum = _quorum;
-        validSigners = _validSigners;
+        require(_validSigners.length > 1, "few valid signers");
+        require(_quorum > 1, "quorum is too small");
+
 
         for(uint256 i = 0; i < _validSigners.length; i++) {
             require(_validSigners[i] != address(0), "zero address not allowed");
-            
+            require(!isValidSigner[_validSigners[i]], "signer already exist");
+
             isValidSigner[_validSigners[i]] = true;
         }
 
@@ -41,7 +43,11 @@ contract Multisig {
             isValidSigner[msg.sender] = true;
             noOfValidSigners += 1;
         }
+
+        require(_quorum <= noOfValidSigners, "quorum greater than valid signers");
+        quorum = _quorum;
     }
+
 
     function transfer(uint256 _amount, address _recipient, address _tokenAddress) external {
         require(msg.sender != address(0), "address zero found");
@@ -72,17 +78,11 @@ contract Multisig {
     function approveTx(uint8 _txId) external {
         Transaction storage trx = transactions[_txId];
 
-        require(IERC20(trx.tokenAddress).balanceOf(address(this)) >= trx.amount, "insufficient funds");
-
         require(trx.id != 0, "invalid tx id");
+        
+        require(IERC20(trx.tokenAddress).balanceOf(address(this)) >= trx.amount, "insufficient funds");
         require(!trx.isCompleted, "transaction already completed");
         require(trx.noOfApproval < quorum, "approvals already reached");
-
-        // for(uint256 i = 0; i < trx.transactionSigners.length; i++) {
-        //     if(trx.transactionSigners[i] == msg.sender) {
-        //         revert("can't sign twice");
-        //     }
-        // }
 
         require(isValidSigner[msg.sender], "not a valid signer");
         require(!hasSigned[msg.sender][_txId], "can't sign twice");
@@ -100,8 +100,20 @@ contract Multisig {
     function withdraw(uint256 _amount, address _tokenAddress) external {
 
     }
+    
+    
+    // write the function to update the quorum and the valid signers would approve
+    function updateQuorum(uint8 _newQuorum, address[] memory _validSigners) external {
+        quorum = _newQuorum;
+        for(uint8 i=0; i < _validSigners.length; i++){
+            isValidSigner[_validSigners[i]] = true;
+        }
 
-    function updateQuorum(uint8 _newQuorum) external {
+        // if(!validSigners[msg.sender]){
+        //     validSigners[msg.sender] = true;
+        //     noOfValidSigners += 1;
+        // }
+
 
     }
 

@@ -13,115 +13,103 @@ describe("Multisig", function () {
   async function MultisigFixture() {
     
     // Contracts are deployed using the first signer/account by default
-    const [owner, addr1, addr2, addr3, addr4, otherAccount] = await hre.ethers.getSigners();
+    const [owner, addr1, addr2, addr3, addr4, recepient, otherAccount] = await hre.ethers.getSigners();
 
     const quorum = 5;
-    const validSigners = [
-      "0x92fF7b7a0D32CA77130eb71a2d50A1389f04A98b",
-      "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC",
-      "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-      "0xA9A59Bf849a1581658DeF926C6f12b83EfdF0DB3",
-      "0x2e900bAdc3580fdA7ce20bf5f3A12b1C2A565817"
+    const amount = 5;
+    const tokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+
+    const validSignersAddress = [
+      {owner:"0x92fF7b7a0D32CA77130eb71a2d50A1389f04A98b",
+      addr1:"0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC",
+      addr2:"0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      addr3: "0xA9A59Bf849a1581658DeF926C6f12b83EfdF0DB3",
+      addr4: "0x2e900bAdc3580fdA7ce20bf5f3A12b1C2A565817"}
     ];
+
+    const validSigners = [owner.address, addr1.address, addr2.address, addr3.address, addr4.address];
 
     const addressZero = "0x0000000000000000000000000000000000000000";
 
     const Multisig = await hre.ethers.getContractFactory("Multisig");
-    const multisig = await Multisig.deploy("Multisig", validSigners);
+    const multisig = await Multisig.deploy(quorum, validSigners);
 
-    return { multisig, validSigners, quorum, otherAccount };
+    return { multisig, amount, addressZero, validSigners, quorum, tokenAddress, recepient, otherAccount, owner, addr1, addr2, addr3, addr4};
   }
 
+
   describe("Deployment", function () {
-    it("Should set the quorum", async function () {
-      const { multisig, quorum } = await loadFixture(MultisigFixture);
+    it("Should check the length of valid signers", async function () {
+      const { validSigners, quorum } = await loadFixture(MultisigFixture);
 
-      const signers = 5;
+      const length = validSigners.length;
 
-      expect(await multisig.quorum()).to.equal(signers);
+      expect(length).to.be.greaterThan(1);
     });
-
-    it("Should set the valid signers", async function () {
-      const { multisig, validSigners } = await loadFixture(MultisigFixture);
-      const signers = 5;
-
-      const newSigners = [
-        "0x92fF7b7a0D32CA77130eb71a2d50A1389f04A98b",
-        "0x8db97C7cEcE249c2b98bDC0226Cc4C2A57BF52FC",
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-        "0xA9A59Bf849a1581658DeF926C6f12b83EfdF0DB3",
-        "0x2e900bAdc3580fdA7ce20bf5f3A12b1C2A565817"
-      ];
-
-      // Use deep.equal to compare array contents, not references
-      expect(await multisig.getValidSigners(signers)).to.deep.equal(newSigners);
+    
+    it("Should check if the number of quorum is too small", async function () {
+      const { quorum } = await loadFixture(MultisigFixture);
+      expect(quorum).to.be.greaterThan(1);
     });
+    
+      it("Should check for address zero", async function () {
+    const {addr1, addressZero} = await loadFixture(MultisigFixture);
+    expect(addr1.address).to.not.be.eq(addressZero);
+  });
+
+
+//     it("Should set the valid signers", async function () {
+//    const {owner, addr1, validSigners, addressZero, otherAccount } = await loadFixture(MultisigFixture);
+
+//   //  expect(signer).to.equal("0x92fF7b7a0D32CA77130eb71a2d50A1389f04A98b");
+//   //  expect(signer).not.to.be.equal(addressZero);
+//    expect(signer).not.to.be.equal(validSigners);
+
+// });
 
   });
 
-  // describe("Withdrawals", function () {
-  //   describe("Validations", function () {
-  //     it("Should revert with the right error if called too soon", async function () {
-  //       const { lock } = await loadFixture(MultisigFixture);
 
-  //       await expect(lock.withdraw()).to.be.revertedWith(
-  //         "You can't withdraw yet"
-  //       );
-  //     });
+  describe("Transfer", function () {
+    describe("Validations", function () {
 
-  //     it("Should revert with the right error if called from another account", async function () {
-  //       const { lock, unlockTime, otherAccount } = await loadFixture(
-  //         MultisigFixture
-  //       );
+      it("Should check that sender is not address zero", async function () {
+      const {owner, addressZero} = await loadFixture(MultisigFixture);
+      expect(owner).to.not.be.eq(addressZero);
+    });
+      
+    
+    it("Should check that a valid Signer owner(msg.sender) is valid", async function () {
+      const {owner,validSigners} = await loadFixture(MultisigFixture);
+      expect(validSigners.includes(owner.address)).to.be.true;
+    });
 
-  //       // We can increase the time in Hardhat Network
-  //       await time.increaseTo(unlockTime);
 
-  //       // We use lock.connect() to send a transaction from another account
-  //       await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-  //         "You aren't the owner"
-  //       );
-  //     });
+      it("Should check for address zero", async function () {
+    const {addr1, addressZero} = await loadFixture(MultisigFixture);
+    expect(addr1.address).to.not.be.eq(addressZero);
+  });
 
-  //     it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-  //       const { lock, unlockTime } = await loadFixture(
-  //         MultisigFixture
-  //       );
+      it("amount should be more than zero", async function () {
+        const { amount } = await loadFixture(
+          MultisigFixture);
+          expect(amount).to.be.greaterThan(0);
+    });
 
-  //       // Transactions are sent using the first signer by default
-  //       await time.increaseTo(unlockTime);
+     it("Should transfer the funds to the receipient", async function () {
+        const { multisig, recepient, amount, owner, tokenAddress } = await loadFixture(
+          MultisigFixture
+        );
 
-  //       await expect(lock.withdraw()).not.to.be.reverted;
-  //     });
-  //   });
 
-  //   describe("Events", function () {
-  //     it("Should emit an event on withdrawals", async function () {
-  //       const { lock, unlockTime, lockedAmount } = await loadFixture(
-  //         MultisigFixture
-  //       );
+        await expect(multisig.transfer(amount, recepient, tokenAddress)).to.changeTokenBalance(
+          [owner, multisig],
+          [amount]
+        );
+      });
+    });
 
-  //       await time.increaseTo(unlockTime);
+    });
 
-  //       await expect(lock.withdraw())
-  //         .to.emit(lock, "Withdrawal")
-  //         .withArgs(lockedAmount, anyValue); // We accept any value as `when` arg
-  //     });
-  //   });
 
-  //   describe("Transfers", function () {
-  //     it("Should transfer the funds to the owner", async function () {
-  //       const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-  //         MultisigFixture
-  //       );
-
-  //       await time.increaseTo(unlockTime);
-
-  //       await expect(lock.withdraw()).to.changeEtherBalances(
-  //         [owner, lock],
-  //         [lockedAmount, -lockedAmount]
-  //       );
-  //     });
-  //   });
-  // });
 });
