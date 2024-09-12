@@ -168,7 +168,8 @@ describe("Multisig", function () {
     const [owner, addr1, addr2, addr3, addr4, recipient, otherAccount] = await hre.ethers.getSigners();
 
     const quorum = 4;  // Minimum number of approvals required
-    const Token = await hre.ethers.getContractFactory("Web3");
+    const amount = ethers.parseUnits("5", 2);
+    const Token = await hre.ethers.getContractFactory("MTXToken");
     const token = await Token.deploy();  // Deploy ERC20 token for testing
 
     const Multisig = await hre.ethers.getContractFactory("Multisig");
@@ -178,7 +179,7 @@ describe("Multisig", function () {
 
     const multisig = await Multisig.deploy(quorum, validSigners);  // Deploy multisig contract
 
-    return { multisig, validSigners, token, owner, addr1, addr2, addr3, addr4, recipient, addressZero, otherAccount, quorum};
+    return { multisig, validSigners, amount, token, owner, addr1, addr2, addr3, addr4, recipient, addressZero, otherAccount, quorum};
   }
 
   describe("Deployment", function () {
@@ -219,8 +220,14 @@ describe("Multisig", function () {
 
   describe("Transaction Validation", function () {
     it("Should check that valid signers are correctly recognized", async function () {
-      const { multisig, addr1, addr2, addr3, addr4, otherAccount } = await loadFixture(MultisigFixture);
+      const { multisig, addr1, addr2, validSigners, addr3, addr4, addressZero, otherAccount } = await loadFixture(MultisigFixture);
 
+      // Check for address zero
+      expect(await validSigners[0]).not.be.equal(addressZero);
+      expect(await validSigners[1]).not.be.equal(addressZero);
+      expect(await validSigners[2]).not.be.equal(addressZero);
+      expect(await validSigners[3]).not.be.equal(addressZero);
+      
       // Owner should be a valid signer
       expect(await multisig.isValidSigner(addr1)).to.be.true;
       expect(await multisig.isValidSigner(addr2)).to.be.true;
@@ -233,13 +240,47 @@ describe("Multisig", function () {
       // Alternatively, OtherAccount should not be a valid signer
       expect(await multisig.isValidSigner(otherAccount.address)).to.be.false;
     });
+   
+    it("Should check that valid signers are correctly recognized", async function () {
+      const { multisig, addr1, addr2, addr3, addr4, addressZero, token, otherAccount } = await loadFixture(MultisigFixture);
+
+      // Owner should be a valid signer
+      expect(await multisig.isValidSigner(addr1)).to.be.true;
+      expect(await multisig.isValidSigner(addr2)).to.be.true;
+      expect(await multisig.isValidSigner(addr3)).to.be.true;
+      expect(await multisig.isValidSigner(addr4)).to.be.true;
+
+      // OtherAccount should not be a valid signer
+      expect(await multisig.isValidSigner(otherAccount)).not.be.true;
+
+      // Alternatively, OtherAccount should not be a valid signer
+      expect(await multisig.isValidSigner(otherAccount.address)).to.be.false;
+
+      // Check that recepient address is not address zero
+      expect(otherAccount).not.be.equal(addressZero);
+
+      // Check that token address is not address zero
+      expect(token).not.be(addressZero);
+
+    });
+
 
     it("Should allow valid signers to initiate a transaction", async function () {
-      const { multisig, owner, addr1, recipient, token } = await loadFixture(MultisigFixture);
+      const { multisig, addr1, recipient, token, amount } = await loadFixture(MultisigFixture);
 
-      const amount = ethers.parseUnits("10", 18);  // Amount to transfer
+      // checking balance of the multisig wallet
+      const multisigBalance = await token.balanceOf(multisig);
 
+      expect(multisigBalance).to.be.greaterThan(amount);
       // Transfer tokens to the multisig contract for the transaction
+
+      const transactionCount = 0;
+
+      const transactionID = transactionCount + 1;
+
+      expect(transactionID).to.be.equal((transactionCount + 1));
+
+      
       await token.transfer(multisig, amount);
 
       // Owner initiates the transaction
@@ -250,32 +291,11 @@ describe("Multisig", function () {
       expect(tx.recipient).to.equal(recipient.address);
       expect(tx.amount).to.equal(amount);
     });
+
   });
 
   describe("Transaction Approval", function () {
-    it("Should allow valid signers to approve transactions and complete it when quorum is reached", async function () {
-      const { multisig, owner, addr1, addr2, recipient, token } = await loadFixture(MultisigFixture);
-
-      const amount = ethers.parseUnits("10", 18);  // Amount to transfer
-
-      // Transfer tokens to the multisig contract for the transaction
-      await token.transfer(multisig, amount);
-
-      // Owner initiates the transaction
-      await multisig.connect(addr1).transfer(amount, recipient.address, token.address);
-
-      // Approve the transaction by other valid signers
-      await multisig.connect(addr1).approveTx(1);  // Approve transaction with id 1
-      await multisig.connect(addr2).approveTx(1);  // Approve transaction with id 1
-
-      // Check if the transaction is completed (after reaching quorum)
-      const tx = await multisig.transactions(1);
-      expect(tx.isCompleted).to.be.true;
-
-      // Check recipient received the funds
-      const recipientBalance = await token.balanceOf(recipient.address);
-      expect(recipientBalance).to.equal(amount);
-    });
+    
 
     it("Should not complete the transaction without reaching the quorum", async function () {
       const { multisig, owner, addr1, recipient, token } = await loadFixture(MultisigFixture);

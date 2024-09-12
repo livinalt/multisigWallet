@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract Web3 is ERC20("WEB3 Token", "WCXI") {
+contract MTXToken is ERC20("Multi Token", "MTX") {
     address public owner;
 
     constructor() {
