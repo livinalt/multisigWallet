@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract Multisig {
@@ -28,7 +28,7 @@ contract Multisig {
         address[] quorumSigners;
     }
 
-    mapping(address => bool) isValidSigner;
+    mapping(address => bool) public isValidSigner;
     mapping(uint => Transaction) public transactions; // txId -> Transaction
     // signer -> transactionId -> bool (checking if an address has signed)
     mapping(uint256 => UpdateQuorum) public quorumUpdates;

@@ -172,31 +172,65 @@ describe("Multisig", function () {
     const token = await Token.deploy();  // Deploy ERC20 token for testing
 
     const Multisig = await hre.ethers.getContractFactory("Multisig");
-    const validSigners = [addr1.address, addr2.address, addr3.address, addr4.address];
+    const validSigners = [addr1, addr2, addr3, addr4];
+
+    const addressZero = "0x0000000000000000000000000000000000000000";
 
     const multisig = await Multisig.deploy(quorum, validSigners);  // Deploy multisig contract
 
-    return { multisig, validSigners, token, owner, addr1, addr2, addr3, addr4, recipient, otherAccount, quorum};
+    return { multisig, validSigners, token, owner, addr1, addr2, addr3, addr4, recipient, addressZero, otherAccount, quorum};
   }
 
   describe("Deployment", function () {
     it("Should set valid signers and quorum correctly", async function () {
-      const { multisig, validSigners, quorum } = await loadFixture(MultisigFixture);
+      const { multisig, validSigners } = await loadFixture(MultisigFixture);
 
       // Check the number of valid signers
       const signerCount = validSigners.length;
       expect(await multisig.quorum()).to.equal(signerCount);
 
   });
+    
+  it("Should check that quorum is greater than 1", async function () {
+      const { multisig } = await loadFixture(MultisigFixture);
+      const newQuorum = 1;
+
+      expect(await multisig.quorum()).to.be.greaterThan(newQuorum);
+      // expect(await multisig.quorum()).to.be.lessThan(newQuorum);
+
+  });
+ 
+  it("Should check for address Zero", async function () {
+      const { validSigners, addressZero } = await loadFixture(MultisigFixture);
+      
+      expect(validSigners[0]).not.be.equal(addressZero);
+      expect(validSigners[1]).not.be.equal(addressZero);
+      expect(validSigners[2]).not.be.equal(addressZero);
+      expect(validSigners[3]).not.be.equal(addressZero);
+
+  });
+  
+  it("Revert Error if Address Zero is detected", async function () {
+      const { addressZero } = await loadFixture(MultisigFixture);
+      
+      expect(addressZero).to.be.revertedWith("zero address not allowed");
+
+  });
 
   describe("Transaction Validation", function () {
     it("Should check that valid signers are correctly recognized", async function () {
-      const { multisig, validSigners, otherAccount } = await loadFixture(MultisigFixture);
+      const { multisig, addr1, addr2, addr3, addr4, otherAccount } = await loadFixture(MultisigFixture);
 
       // Owner should be a valid signer
-      expect(await multisig.isValidSigner(addr1.address)).to.be.true;
+      expect(await multisig.isValidSigner(addr1)).to.be.true;
+      expect(await multisig.isValidSigner(addr2)).to.be.true;
+      expect(await multisig.isValidSigner(addr3)).to.be.true;
+      expect(await multisig.isValidSigner(addr4)).to.be.true;
 
       // OtherAccount should not be a valid signer
+      expect(await multisig.isValidSigner(otherAccount)).not.be.true;
+
+      // Alternatively, OtherAccount should not be a valid signer
       expect(await multisig.isValidSigner(otherAccount.address)).to.be.false;
     });
 
@@ -297,4 +331,5 @@ describe("Multisig", function () {
       expect(currentQuorum).to.not.equal(4);  // Still the old quorum
     });
   });
+});
 });

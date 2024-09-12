@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
+pragma solidity 0.8.24;
 
 import "./Multisig.sol";
 
@@ -11,7 +11,7 @@ contract MultisigFactory {
         _newMultisig = new Multisig(_quorum, _validSigners);
         multisigClones.push(_newMultisig);
         _length = multisigClones.length;
-        return(newMultisig, _length);
+        return(_newMultisig, _length);
     }
 
     function getMultisigClones() external view returns(Multisig[] memory){
