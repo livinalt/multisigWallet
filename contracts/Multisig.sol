@@ -20,10 +20,20 @@ contract Multisig {
         address[] transactionSigners;
     }
 
+    struct UpdateQuorum{
+        uint256 id;
+        uint8 newQuorum;
+        uint256 noOfApproval;
+        bool isCompleted;
+        address[] quorumSigners;
+    }
+
     mapping(address => bool) isValidSigner;
-    mapping(uint => Transaction) transactions; // txId -> Transaction
+    mapping(uint => Transaction) public transactions; // txId -> Transaction
     // signer -> transactionId -> bool (checking if an address has signed)
+    mapping(uint256 => UpdateQuorum) public quorumUpdates;
     mapping(address => mapping(uint256 => bool)) hasSigned;
+    mapping(address => mapping(uint256 => bool)) public hasApprovedQuorum; // quorumUpdateId -> bool
 
     constructor(uint8 _quorum, address[] memory _validSigners) {
         require(_validSigners.length > 1, "few valid signers");
@@ -97,30 +107,47 @@ contract Multisig {
         }
     }
 
-    function withdraw(uint256 _amount, address _tokenAddress) external {
+    
+    // function to update the quorum and the valid signers would approve
+    function updateQuorum(uint8 _newQuorum) external {
 
+        require(isValidSigner[msg.sender], "Only valid signers can propose quorum update");
+        require(_newQuorum > 1 && _newQuorum <= noOfValidSigners, "Invalid new quorum value");
+
+        // Generate a new quorum update proposal
+        uint256 updateQuorumTxId = txCount + 1;
+
+        UpdateQuorum storage updateTx = quorumUpdates[updateQuorumTxId];
+        
+        updateTx.id = updateQuorumTxId;
+        updateTx.newQuorum = _newQuorum;
+        updateTx.noOfApproval = 1;
+        updateTx.quorumSigners.push(msg.sender);
+        hasApprovedQuorum[msg.sender][updateQuorumTxId] = true;
+
+        txCount += 1;
     }
-    
-    
-    // write the function to update the quorum and the valid signers would approve
-    function updateQuorum(uint8 _newQuorum, address[] memory _validSigners) external {
-        quorum = _newQuorum;
-        for(uint8 i=0; i < _validSigners.length; i++){
-            isValidSigner[_validSigners[i]] = true;
+
+    // Approve quorum update
+    function approveQuorumUpdate(uint256 updateQuorumTxId) external {
+        require(isValidSigner[msg.sender], "only valid signers can approve");
+        
+        UpdateQuorum storage updateTx = quorumUpdates[updateQuorumTxId];
+
+        require(updateTx.id != 0, "invalid quorum update ID");
+        require(!updateTx.isCompleted, "quorum update already completed");
+        require(!hasApprovedQuorum[msg.sender][updateQuorumTxId], "already approved");
+
+        updateTx.noOfApproval += 1;
+        updateTx.quorumSigners.push(msg.sender);
+        hasApprovedQuorum[msg.sender][updateQuorumTxId] = true;
+
+        if(updateTx.noOfApproval >= quorum) {
+            quorum = updateTx.newQuorum;
+            updateTx.isCompleted = true;
         }
-
-        // if(!validSigners[msg.sender]){
-        //     validSigners[msg.sender] = true;
-        //     noOfValidSigners += 1;
-        // }
-
-
     }
 
-    // // added valid signers function
-    // function getValidSigners() external view returns(address[] memory){    
-    //     return validSigners;
-    // }
     
     // added valid signers function
     function getValidSigners(uint8 id) external view returns(address[] memory){   
