@@ -235,15 +235,15 @@ describe("Multisig", function () {
     });
 
     it("Should allow valid signers to initiate a transaction", async function () {
-      const { multisig, owner, recipient, token } = await loadFixture(MultisigFixture);
+      const { multisig, owner, addr1, recipient, token } = await loadFixture(MultisigFixture);
 
       const amount = ethers.parseUnits("10", 18);  // Amount to transfer
 
       // Transfer tokens to the multisig contract for the transaction
-      await token.transfer(multisig.address, amount);
+      await token.transfer(multisig, amount);
 
       // Owner initiates the transaction
-      await multisig.connect(owner).createTransaction(amount, recipient.address, token.address);
+      await multisig.connect(addr1).transfer(amount, recipient, token);
 
       // Check the transaction is recorded
       const tx = await multisig.transactions(1);  // Get transaction with id = 1
@@ -256,17 +256,17 @@ describe("Multisig", function () {
     it("Should allow valid signers to approve transactions and complete it when quorum is reached", async function () {
       const { multisig, owner, addr1, addr2, recipient, token } = await loadFixture(MultisigFixture);
 
-      const amount = ethers.utils.parseUnits("10", 18);  // Amount to transfer
+      const amount = ethers.parseUnits("10", 18);  // Amount to transfer
 
       // Transfer tokens to the multisig contract for the transaction
-      await token.transfer(multisig.address, amount);
+      await token.transfer(multisig, amount);
 
       // Owner initiates the transaction
-      await multisig.connect(owner).createTransaction(amount, recipient.address, token.address);
+      await multisig.connect(addr1).transfer(amount, recipient.address, token.address);
 
       // Approve the transaction by other valid signers
-      await multisig.connect(addr1).approveTransaction(1);  // Approve transaction with id 1
-      await multisig.connect(addr2).approveTransaction(1);  // Approve transaction with id 1
+      await multisig.connect(addr1).approveTx(1);  // Approve transaction with id 1
+      await multisig.connect(addr2).approveTx(1);  // Approve transaction with id 1
 
       // Check if the transaction is completed (after reaching quorum)
       const tx = await multisig.transactions(1);
@@ -280,16 +280,16 @@ describe("Multisig", function () {
     it("Should not complete the transaction without reaching the quorum", async function () {
       const { multisig, owner, addr1, recipient, token } = await loadFixture(MultisigFixture);
 
-      const amount = ethers.utils.parseUnits("10", 18);  // Amount to transfer
+      const amount = ethers.parseUnits("10", 18);  // Amount to transfer
 
       // Transfer tokens to the multisig contract for the transaction
-      await token.transfer(multisig.address, amount);
+      await token.transfer(multisig, amount);
 
       // Owner initiates the transaction
-      await multisig.connect(owner).createTransaction(amount, recipient.address, token.address);
+      await multisig.connect(owner).transfer(amount, recipient.address, token.address);
 
       // Only one signer approves, not enough for quorum
-      await multisig.connect(addr1).approveTransaction(1);
+      await multisig.connect(addr1).approveTx(1);
 
       // Check the transaction is not completed yet
       const tx = await multisig.transactions(1);
@@ -306,11 +306,11 @@ describe("Multisig", function () {
       const { multisig, owner, addr1, addr2 } = await loadFixture(MultisigFixture);
 
       // Owner initiates a quorum update to set the new quorum to 4
-      await multisig.connect(owner).proposeQuorumUpdate(4);
+      await multisig.connect(owner).updateQuorum(4);
 
       // Approve the quorum update by other valid signers
-      await multisig.connect(addr1).approveQuorumUpdate(1);  // Approve quorum update with id 1
-      await multisig.connect(addr2).approveQuorumUpdate(1);  // Approve quorum update with id 1
+      await multisig.connect(addr1).updateQuorum(1);  // Approve quorum update with id 1
+      await multisig.connect(addr2).updateQuorum(1);  // Approve quorum update with id 1
 
       // Check if the quorum is updated
       const newQuorum = await multisig.quorum();
@@ -321,10 +321,10 @@ describe("Multisig", function () {
       const { multisig, owner, addr1 } = await loadFixture(MultisigFixture);
 
       // Owner initiates a quorum update to set the new quorum to 4
-      await multisig.connect(owner).proposeQuorumUpdate(4);
+      await multisig.connect(owner).updateQuorum(5);
 
       // Only one signer approves, not enough for quorum
-      await multisig.connect(addr1).approveQuorumUpdate(1);
+      await multisig.connect(owner).updateQuorum(1);
 
       // Check if the quorum remains unchanged
       const currentQuorum = await multisig.quorum();

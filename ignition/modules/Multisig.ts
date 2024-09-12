@@ -9,13 +9,16 @@ const addresses = [
   "0x2e900bAdc3580fdA7ce20bf5f3A12b1C2A565817"
 ];
 
-
-
-
 const MultisigModule = buildModule("MultisigModule", (m) => {
   const multisig = m.contract("Multisig", [quorum, addresses]);
 
   return { multisig };
+});
+
+const MultisigFactoryModule = buildModule("MultisigFactoryModule", (m) => {
+  const multisigFactory = m.contract("MultisigFactory", [quorum, addresses]);
+
+  return { multisigFactory };
 });
 
 export default MultisigModule;
