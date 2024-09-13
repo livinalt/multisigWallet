@@ -352,4 +352,5 @@ describe("Multisig", function () {
     });
   });
 });
+
 });

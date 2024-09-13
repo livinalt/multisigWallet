@@ -112,7 +112,8 @@ contract Multisig {
     function updateQuorum(uint8 _newQuorum) external {
 
         require(isValidSigner[msg.sender], "Only valid signers can propose quorum update");
-        require(_newQuorum > 1 && _newQuorum <= noOfValidSigners, "Invalid new quorum value");
+        require(_newQuorum > 1, "Invalid new quorum value");
+        require( _newQuorum <= noOfValidSigners, "Invalid new quorum value");
 
         // Generate a new quorum update proposal
         uint256 updateQuorumTxId = txCount + 1;
